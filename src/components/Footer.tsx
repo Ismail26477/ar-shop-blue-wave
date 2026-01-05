@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Phone, Mail, MapPin, Facebook, Instagram, Twitter } from 'lucide-react';
+import { categories } from '@/data/products';
 
 const Footer = () => {
   return (
@@ -36,13 +37,15 @@ const Footer = () => {
 
           {/* Quick Links */}
           <div>
-            <h4 className="font-semibold mb-4">Quick Links</h4>
+            <h4 className="font-semibold mb-4">Categories</h4>
             <ul className="space-y-2 text-sm opacity-80">
-              <li><Link to="/products" className="hover:text-primary transition-colors">All Products</Link></li>
-              <li><Link to="/products?category=Mobiles" className="hover:text-primary transition-colors">Mobiles</Link></li>
-              <li><Link to="/products?category=Laptops" className="hover:text-primary transition-colors">Laptops</Link></li>
-              <li><Link to="/products?category=Headphones" className="hover:text-primary transition-colors">Headphones</Link></li>
-              <li><Link to="/about" className="hover:text-primary transition-colors">About Us</Link></li>
+              {categories.map((cat) => (
+                <li key={cat.name}>
+                  <Link to={`/products?category=${cat.name}`} className="hover:text-primary transition-colors">
+                    {cat.icon} {cat.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -50,11 +53,11 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold mb-4">Customer Service</h4>
             <ul className="space-y-2 text-sm opacity-80">
+              <li><Link to="/account" className="hover:text-primary transition-colors">My Account</Link></li>
               <li><a href="#" className="hover:text-primary transition-colors">Track Order</a></li>
               <li><a href="#" className="hover:text-primary transition-colors">Return Policy</a></li>
               <li><a href="#" className="hover:text-primary transition-colors">Warranty Info</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">FAQs</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Terms & Conditions</a></li>
+              <li><Link to="/about" className="hover:text-primary transition-colors">About Us</Link></li>
             </ul>
           </div>
 
