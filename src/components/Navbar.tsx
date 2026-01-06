@@ -4,11 +4,14 @@ import { Search, ShoppingCart, Menu, X, User, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
+import { categories } from '@/data/products';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { totalItems } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const handleSearch = (e: React.FormEvent) => {
@@ -80,9 +83,11 @@ const Navbar = () => {
                 )}
               </Button>
             </Link>
-            <Button variant="ghost" size="icon" className="hidden md:flex">
-              <User className="h-5 w-5" />
-            </Button>
+            <Link to={user ? '/account' : '/auth'}>
+              <Button variant="ghost" size="icon" className="hidden md:flex">
+                <User className="h-5 w-5" />
+              </Button>
+            </Link>
             <Button
               variant="ghost"
               size="icon"
@@ -115,20 +120,20 @@ const Navbar = () => {
         </form>
 
         {/* Category navigation */}
-        <div className="hidden md:flex items-center gap-6 mt-4 border-t pt-4">
-          <Link to="/products" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+        <div className="hidden md:flex items-center gap-6 mt-4 border-t pt-4 overflow-x-auto">
+          <Link to="/products" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors whitespace-nowrap">
             All Products
           </Link>
-          <Link to="/products?category=Mobiles" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-            📱 Mobiles
-          </Link>
-          <Link to="/products?category=Laptops" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-            💻 Laptops
-          </Link>
-          <Link to="/products?category=Headphones" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-            🎧 Headphones
-          </Link>
-          <Link to="/about" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+          {categories.map((cat) => (
+            <Link
+              key={cat.name}
+              to={`/products?category=${cat.name}`}
+              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors whitespace-nowrap"
+            >
+              {cat.icon} {cat.name}
+            </Link>
+          ))}
+          <Link to="/about" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors whitespace-nowrap">
             About Us
           </Link>
         </div>
@@ -137,21 +142,29 @@ const Navbar = () => {
       {/* Mobile menu */}
       {isMenuOpen && (
         <div className="md:hidden bg-card border-t animate-fade-up">
-          <div className="container mx-auto px-4 py-4 space-y-4">
+          <div className="container mx-auto px-4 py-4 space-y-2">
             <Link to="/products" className="block py-2 font-medium" onClick={() => setIsMenuOpen(false)}>
               All Products
             </Link>
-            <Link to="/products?category=Mobiles" className="block py-2" onClick={() => setIsMenuOpen(false)}>
-              📱 Mobiles
-            </Link>
-            <Link to="/products?category=Laptops" className="block py-2" onClick={() => setIsMenuOpen(false)}>
-              💻 Laptops
-            </Link>
-            <Link to="/products?category=Headphones" className="block py-2" onClick={() => setIsMenuOpen(false)}>
-              🎧 Headphones
-            </Link>
+            {categories.map((cat) => (
+              <Link
+                key={cat.name}
+                to={`/products?category=${cat.name}`}
+                className="block py-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {cat.icon} {cat.name}
+              </Link>
+            ))}
             <Link to="/about" className="block py-2" onClick={() => setIsMenuOpen(false)}>
               About Us
+            </Link>
+            <Link
+              to={user ? '/account' : '/auth'}
+              className="block py-2 font-medium text-primary"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              {user ? 'My Account' : 'Sign In / Sign Up'}
             </Link>
           </div>
         </div>
