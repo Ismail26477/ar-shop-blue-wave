@@ -1,23 +1,149 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Trash2, Minus, Plus, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Trash2, Minus, Plus, ShoppingBag, ArrowRight, Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 import { formatPrice } from '@/data/products';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
 
 const Cart = () => {
   const { items, removeFromCart, updateQuantity, totalPrice, clearCart } = useCart();
-
-  const handleCheckout = () => {
-    toast.info('Razorpay integration coming soon! This will process your payment securely.');
-  };
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const deliveryCharge = totalPrice >= 999 ? 0 : 99;
   const finalTotal = totalPrice + deliveryCharge;
+
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleCheckout = async () => {
+    if (!user) {
+      toast.error('Please login to proceed with checkout');
+      navigate('/auth');
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // Load Razorpay script
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        toast.error('Failed to load payment gateway. Please try again.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Create Razorpay order
+      const { data: orderResponse, error: orderError } = await supabase.functions.invoke('razorpay', {
+        body: {
+          action: 'create-order',
+          amount: finalTotal,
+          currency: 'INR',
+        },
+      });
+
+      if (orderError || !orderResponse?.orderId) {
+        console.error('Order creation error:', orderError);
+        toast.error('Failed to create order. Please try again.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Configure Razorpay options
+      const options = {
+        key: orderResponse.keyId,
+        amount: orderResponse.amount,
+        currency: orderResponse.currency,
+        name: 'AR Computers',
+        description: `Order of ${items.length} item(s)`,
+        order_id: orderResponse.orderId,
+        handler: async (response: any) => {
+          // Verify payment
+          try {
+            const { data: verifyResponse, error: verifyError } = await supabase.functions.invoke('razorpay', {
+              body: {
+                action: 'verify-payment',
+                orderId: response.razorpay_order_id,
+                paymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+                orderData: {
+                  totalAmount: finalTotal,
+                  items: items.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    image: item.image,
+                    quantity: item.quantity,
+                    price: item.price,
+                  })),
+                },
+              },
+            });
+
+            if (verifyError || !verifyResponse?.verified) {
+              toast.error('Payment verification failed. Please contact support.');
+              return;
+            }
+
+            toast.success('Payment successful! Your order has been placed.');
+            clearCart();
+            navigate('/account');
+          } catch (error) {
+            console.error('Payment verification error:', error);
+            toast.error('Payment verification failed. Please contact support.');
+          }
+        },
+        prefill: {
+          email: user.email || '',
+        },
+        theme: {
+          color: '#F97316',
+        },
+        modal: {
+          ondismiss: () => {
+            setIsProcessing(false);
+            toast.info('Payment cancelled');
+          },
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.on('payment.failed', (response: any) => {
+        console.error('Payment failed:', response.error);
+        toast.error(`Payment failed: ${response.error.description}`);
+        setIsProcessing(false);
+      });
+      razorpay.open();
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast.error('Something went wrong. Please try again.');
+      setIsProcessing(false);
+    }
+  };
 
   if (items.length === 0) {
     return (
@@ -161,8 +287,16 @@ const Cart = () => {
                   size="lg"
                   className="w-full mt-6"
                   onClick={handleCheckout}
+                  disabled={isProcessing}
                 >
-                  Proceed to Checkout
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Proceed to Checkout'
+                  )}
                 </Button>
 
                 <div className="mt-4 flex items-center justify-center gap-2">
@@ -180,7 +314,7 @@ const Cart = () => {
                     <li>• UPI (GPay, PhonePe, Paytm)</li>
                     <li>• Credit/Debit Cards</li>
                     <li>• Net Banking</li>
-                    <li>• Cash on Delivery</li>
+                    <li>• Wallets</li>
                     <li>• EMI Options Available</li>
                   </ul>
                 </div>
