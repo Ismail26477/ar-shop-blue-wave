@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { User, MapPin, Package, Plus, Trash2, Edit2, LogOut } from 'lucide-react';
+import { User, MapPin, Package, Plus, Trash2, Edit2, LogOut, ChevronRight } from 'lucide-react';
 import { z } from 'zod';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -12,6 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatPrice } from '@/data/products';
+import OrderTracking from '@/components/OrderTracking';
 
 const addressSchema = z.object({
   full_name: z.string().trim().min(2, "Name is required").max(100),
@@ -472,10 +473,12 @@ const Account = () => {
                           <div className="flex gap-2">
                             <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                               order.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                              order.status === 'shipped' ? 'bg-primary/10 text-primary' :
+                              order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
+                              order.status === 'out_for_delivery' ? 'bg-amber-100 text-amber-700' :
+                              order.status === 'processing' ? 'bg-purple-100 text-purple-700' :
                               'bg-secondary text-secondary-foreground'
                             }`}>
-                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                              {order.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                             </span>
                             <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                               order.payment_status === 'paid' ? 'bg-green-100 text-green-700' :
@@ -485,17 +488,38 @@ const Account = () => {
                             </span>
                           </div>
                         </div>
+
+                        {/* Mini Order Tracking */}
+                        {order.status !== 'delivered' && order.status !== 'pending' && (
+                          <div className="mb-4 p-4 bg-secondary/50 rounded-lg">
+                            <OrderTracking status={order.status} createdAt={order.created_at} />
+                          </div>
+                        )}
+
                         <div className="border-t pt-4 space-y-2">
-                          {order.order_items.map((item, idx) => (
+                          {order.order_items.slice(0, 2).map((item, idx) => (
                             <div key={idx} className="flex justify-between text-sm">
                               <span>{item.product_name} × {item.quantity}</span>
                               <span>{formatPrice(item.price * item.quantity)}</span>
                             </div>
                           ))}
+                          {order.order_items.length > 2 && (
+                            <p className="text-sm text-muted-foreground">
+                              + {order.order_items.length - 2} more item(s)
+                            </p>
+                          )}
                         </div>
-                        <div className="border-t mt-4 pt-4 flex justify-between font-semibold">
-                          <span>Total</span>
-                          <span>{formatPrice(order.total_amount)}</span>
+                        <div className="border-t mt-4 pt-4 flex items-center justify-between">
+                          <div className="font-semibold">
+                            <span className="text-muted-foreground text-sm font-normal">Total: </span>
+                            {formatPrice(order.total_amount)}
+                          </div>
+                          <Link to={`/order/${order.id}`}>
+                            <Button variant="outline" size="sm">
+                              View Details
+                              <ChevronRight className="h-4 w-4 ml-1" />
+                            </Button>
+                          </Link>
                         </div>
                       </div>
                     ))

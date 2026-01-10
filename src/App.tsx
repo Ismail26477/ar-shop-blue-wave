@@ -13,6 +13,7 @@ import Cart from "./pages/Cart";
 import About from "./pages/About";
 import Auth from "./pages/Auth";
 import Account from "./pages/Account";
+import OrderDetail from "./pages/OrderDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
                 <Route path="/about" element={<About />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/account" element={<Account />} />
+                <Route path="/order/:id" element={<OrderDetail />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
